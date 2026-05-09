@@ -28,7 +28,7 @@ st.markdown("""
 
 with st.sidebar:
     st.title("⚙️ Configuration")
-    gemini_key = st.secrets["ANTHROPIC_API_KEY"]
+    anthropic_key = st.secrets["ANTHROPIC_API_KEY"]
     news_key = st.secrets["NEWS_API_KEY"]
     st.markdown("---")
     st.markdown("**How it works**")
@@ -36,7 +36,7 @@ with st.sidebar:
 1. Enter a stock ticker
 2. We fetch real news headlines
 3. We pull live financial data
-4. Gemini scores both dimensions
+4. Anthropic scores both dimensions
 5. You see the gap — hype vs reality
 """)
 
@@ -77,7 +77,7 @@ def fetch_news(ticker, company_name, api_key):
 def fetch_fundamentals(ticker):
     try:
         t = yf.Ticker(ticker)
-        info = t.info
+        info = dict(t.info)
         rev_growth = None
         financials = t.financials
         if financials is not None and not financials.empty and "Total Revenue" in financials.index:
@@ -178,14 +178,14 @@ def make_gauge(value, title, color):
 if analyze_btn and ticker_input:
     ticker = ticker_input.strip().upper()
 
-    if not gemini_key or not news_key:
+    if not anthropic_key or not news_key:
         st.error("API keys missing from secrets.toml")
         st.stop()
 
     with st.spinner(f"Fetching fundamentals for {ticker}..."):
         fundamentals = fetch_fundamentals(ticker)
 
-    if "error" in fundamentals and len(fundamentals) == 2:
+    if "error" in fundamentals:
         st.error(f"Could not fetch data for '{ticker}'. Check the ticker symbol.")
         st.stop()
 
@@ -195,8 +195,8 @@ if analyze_btn and ticker_input:
     with st.spinner("Fetching news headlines..."):
         headlines = fetch_news(ticker, company_name, news_key)
 
-    with st.spinner("Running Gemini AI analysis..."):
-        result = analyze_with_gemini(ticker, headlines, fundamentals, gemini_key)
+    with st.spinner("Running Anthropic AI analysis..."):
+        result = analyze_with_gemini(ticker, headlines, fundamentals, anthropic_key)
 
     if "error" in result:
         st.error(f"AI analysis failed: {result['error']}")
