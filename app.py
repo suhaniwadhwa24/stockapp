@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 import json
 import pandas as pd
 
-# ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Narrative vs Fundamentals",
     page_icon="📊",
@@ -36,7 +35,7 @@ with st.sidebar:
 1. Enter a stock ticker
 2. We fetch real news headlines
 3. We pull live financial data
-4. Anthropic scores both dimensions
+4. Claude AI scores both dimensions
 5. You see the gap — hype vs reality
 """)
 
@@ -76,8 +75,14 @@ def fetch_news(ticker, company_name, api_key):
 
 def fetch_fundamentals(ticker):
     try:
-        t = yf.Ticker(ticker)
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        })
+        t = yf.Ticker(ticker, session=session)
         info = dict(t.info)
+        if not info or len(info) <= 1:
+            return {"error": "No data returned", "company_name": ticker}
         rev_growth = None
         financials = t.financials
         if financials is not None and not financials.empty and "Total Revenue" in financials.index:
@@ -104,7 +109,7 @@ def fetch_fundamentals(ticker):
         return {"error": str(e), "company_name": ticker}
 
 
-def analyze_with_gemini(ticker, headlines, fundamentals, api_key):
+def analyze_with_claude(ticker, headlines, fundamentals, api_key):
     client = anthropic.Anthropic(api_key=api_key)
     headlines_text = "\n".join(f"- {h}" for h in headlines)
     fund_text = json.dumps(fundamentals, indent=2)
@@ -195,8 +200,8 @@ if analyze_btn and ticker_input:
     with st.spinner("Fetching news headlines..."):
         headlines = fetch_news(ticker, company_name, news_key)
 
-    with st.spinner("Running Anthropic AI analysis..."):
-        result = analyze_with_gemini(ticker, headlines, fundamentals, anthropic_key)
+    with st.spinner("Running Claude AI analysis..."):
+        result = analyze_with_claude(ticker, headlines, fundamentals, anthropic_key)
 
     if "error" in result:
         st.error(f"AI analysis failed: {result['error']}")
